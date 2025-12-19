@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Поворот изображения</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Поворот изображения — Вариант 6</h1>
+    <form id="uploadForm">
+        <fieldset>
+            <legend>Загрузка изображения</legend>
+
+            <div class="form-group">
+                <label>Выберите изображение:</label>
+                <input type="file" name="image" required>
+            </div>
+
+            <div class="form-group">
+                <label>Угол поворота:</label>
+                <input type="text" name="angle" required placeholder="Например: 45">
+            </div>
+
+            <div class="form-group">
+                <label>Введите CAPTCHA:</label>
+                <img id="captchaImage" src="{{ captcha_image }}" height="80">
+                <input type="text" name="captcha_input" id="captcha" required>
+            </div>
+
+            <input type="hidden" id="session_id" name="session_id" value="{{ session_id }}">
+            <button type="submit">Обработать</button>
+        </fieldset>
+    </form>
+
+    <div class="error" id="error" style="display:none;"></div>
+
+    <div id="results" style="display:none;">
+        <h2>Результаты обработки</h2>
+
+        <div class="result-item">
+            <h3>Повернутое изображение</h3>
+            <p>Угол: <span id="angleValue"></span>°</p>
+            <img id="rotatedImage">
+        </div>
+
+        <div class="result-item">
+            <h3>Гистограмма исходного изображения</h3>
+            <canvas id="originalHistogram" width="1100" height="600"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function refreshCaptcha() {
+        const resp = await fetch("/");
+        const text = await resp.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, "text/html");
+
+        document.getElementById("captchaImage").src = doc.getElementById("captchaImage").src;
+        document.getElementById("session_id").value = doc.getElementById("session_id").value;
+        document.getElementById("captcha").value = "";
+    }
+
+    async function displayHistogram(canvasId, histData) {
+        const ctx = document.getElementById(canvasId).getContext("2d");
+        const img = new Image();
+        img.src = "data:image/png;base64," + histData;
+        img.onload = () => ctx.drawImage(img, 0, 0, 1100, 600);
+    }
+
+    document.getElementById("uploadForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        try {
+            const resp = await fetch("/process", {method:"POST", body:formData});
+            const res = await resp.json();
+
+            if (!resp.ok) throw new Error(res.error);
+
+            document.getElementById("rotatedImage").src = res.rotated_image;
+            document.getElementById("angleValue").textContent = res.angle;
+            await displayHistogram("originalHistogram", res.original_histogram);
+
+            document.getElementById("results").style.display = "block";
+            document.getElementById("error").style.display = "none";
+
+            await refreshCaptcha();
+        } catch(err) {
+            document.getElementById("error").textContent = "Ошибка: "+err.message;
+            document.getElementById("error").style.display="block";
+            document.getElementById("results").style.display="none";
+            await refreshCaptcha();
+        }
+    });
+</script>
+</body>
+</html>
