@@ -31,7 +31,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 # Версия пайтона
-python-3.13.0
+python-3.11.0
 
 # Конфигурационные файлы
 fastapi==0.104.1
